@@ -10,7 +10,7 @@ const PORT = 3000;
 const OUTPUT_DIR = path.join(__dirname, 'output');
 
 app.use(express.json());
-app.use(express.static('public'));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.use('/output', express.static(OUTPUT_DIR));
 
 function extractVideoId(url) {
