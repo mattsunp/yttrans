@@ -139,7 +139,8 @@
   </div>
 
   <script>
-    let currentFilename = null;
+    let currentText = null;
+    let currentVideoId = null;
 
     async function startTranscribe() {
       const url = document.getElementById('urlInput').value.trim();
@@ -163,7 +164,8 @@
         const data = await res.json();
 
         if (data.success) {
-          currentFilename = data.filename;
+          currentText = data.text;
+          currentVideoId = data.videoId;
           document.getElementById('resultText').value = data.text;
 
           const langMap = { ja: '🇯🇵 日本語字幕', en: '🇺🇸 英語字幕', auto: '自動生成字幕' };
@@ -185,11 +187,14 @@
     }
 
     function downloadFile() {
-      if (!currentFilename) return;
+      if (!currentText) return;
+      const blob = new Blob([currentText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = '/output/' + currentFilename;
-      a.download = currentFilename;
+      a.href = url;
+      a.download = `${currentVideoId}.txt`;
       a.click();
+      URL.revokeObjectURL(url);
     }
 
     document.getElementById('urlInput').addEventListener('keydown', e => {

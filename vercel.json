@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/api/transcribe", "dest": "/api/transcribe.js" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
+}
