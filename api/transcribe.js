@@ -37,28 +37,29 @@ export default async function handler(req, res) {
 
   let transcript = null;
   let lang = null;
+  const errors = [];
 
   try {
     const items = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'ja' });
     if (items && items.length > 0) { transcript = formatTranscript(items); lang = 'ja'; }
-  } catch (e) {}
+  } catch (e) { errors.push(`ja: ${e.message}`); }
 
   if (!transcript) {
     try {
       const items = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
       if (items && items.length > 0) { transcript = formatTranscript(items); lang = 'en'; }
-    } catch (e) {}
+    } catch (e) { errors.push(`en: ${e.message}`); }
   }
 
   if (!transcript) {
     try {
       const items = await YoutubeTranscript.fetchTranscript(videoId);
       if (items && items.length > 0) { transcript = formatTranscript(items); lang = 'auto'; }
-    } catch (e) {}
+    } catch (e) { errors.push(`auto: ${e.message}`); }
   }
 
   if (!transcript) {
-    return res.json({ success: false, error: 'この動画には字幕がありません' });
+    return res.json({ success: false, error: 'この動画には字幕がありません', debug: errors });
   }
 
   res.json({ success: true, text: transcript, lang, videoId });
