@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YTTrans - YouTube文字起こし</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      color: #c00;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 32px;
+      font-size: 0.9rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 32px;
+      width: 100%;
+      max-width: 700px;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    input[type="text"]:focus { border-color: #c00; }
+    button {
+      padding: 12px 24px;
+      background: #c00;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    button:hover { background: #a00; }
+    button:disabled { background: #aaa; cursor: not-allowed; }
+    .status {
+      font-size: 0.9rem;
+      padding: 10px 0;
+      min-height: 24px;
+      color: #555;
+    }
+    .status.error { color: #c00; }
+    .status.success { color: #080; }
+    .result-area {
+      display: none;
+      margin-top: 16px;
+    }
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .result-label {
+      font-size: 0.85rem;
+      color: #888;
+    }
+    .download-btn {
+      padding: 6px 16px;
+      font-size: 0.85rem;
+      background: #555;
+    }
+    .download-btn:hover { background: #333; }
+    textarea {
+      width: 100%;
+      height: 360px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      resize: vertical;
+      font-family: inherit;
+      color: #333;
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid #ccc;
+      border-top-color: #c00;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <h1>▶ YTTrans</h1>
+  <p class="subtitle">YouTube動画の字幕をテキストファイルに変換</p>
+
+  <div class="card">
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." oncontextmenu="return true;" />
+      <button id="startBtn" onclick="startTranscribe()">取得</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="result-area" id="resultArea">
+      <div class="result-header">
+        <span class="result-label" id="langLabel"></span>
+        <button class="download-btn" onclick="downloadFile()">テキストをダウンロード</button>
+      </div>
+      <textarea id="resultText" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    let currentFilename = null;
+
+    async function startTranscribe() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) return;
+
+      const btn = document.getElementById('startBtn');
+      const status = document.getElementById('status');
+      const resultArea = document.getElementById('resultArea');
+
+      btn.disabled = true;
+      resultArea.style.display = 'none';
+      status.className = 'status';
+      status.innerHTML = '<span class="spinner"></span>字幕を取得中...';
+
+      try {
+        const res = await fetch('/api/transcribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentFilename = data.filename;
+          document.getElementById('resultText').value = data.text;
+
+          const langMap = { ja: '🇯🇵 日本語字幕', en: '🇺🇸 英語字幕', auto: '自動生成字幕' };
+          document.getElementById('langLabel').textContent = langMap[data.lang] || data.lang;
+
+          resultArea.style.display = 'block';
+          status.className = 'status success';
+          status.textContent = '✓ 取得完了';
+        } else {
+          status.className = 'status error';
+          status.textContent = '✗ ' + data.error;
+        }
+      } catch (e) {
+        status.className = 'status error';
+        status.textContent = '✗ 通信エラーが発生しました';
+      }
+
+      btn.disabled = false;
+    }
+
+    function downloadFile() {
+      if (!currentFilename) return;
+      const a = document.createElement('a');
+      a.href = '/output/' + currentFilename;
+      a.download = currentFilename;
+      a.click();
+    }
+
+    document.getElementById('urlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startTranscribe();
+    });
+  </script>
+</body>
+</html>
